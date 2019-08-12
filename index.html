@@ -9,13 +9,210 @@
     <script type="text/javascript" src="./js/ext-all.js"></script>
     <script>
         Ext.onReady(function () {
+            var rowNumber = 0, columnNumber = 0
 
+            var win = new Ext.Window({
+                title: '请输入表格信息',
+                layout: 'form',
+                width: 220,
+                height: 150,
+                labelWidth: 30,
+                items: [{
+                    fieldLabel: '行数',
+                    id: 'input-row',
+                    xtype: 'numberfield',
+                    minValue: 1,
+                    name: 'rows'
+                }, {
+                    fieldLabel: '列数',
+                    id: 'input-column',
+                    xtype: 'numberfield',
+                    minValue: 1,
+                    name: 'columns'
+                }
+                ],
+                buttons: [{
+                    text: 'Submit',
+                    handler: function () {
+                        rowNumber = Ext.getCmp('input-row').getValue()
+                        columnNumber = Ext.getCmp('input-column').getValue()
+                        if (!Ext.isEmpty(rowNumber) && !Ext.isEmpty(columnNumber) && rowNumber !== 0 && columnNumber !== 0) {
+                            generateTableTemplate(rowNumber, columnNumber)
+                            renderTable()
+                            Ext.getCmp('input-row').setValue('')
+                            Ext.getCmp('input-column').setValue('')
+                            win.hide()
+                        } else {
+                            Ext.Msg.alert('提示', '请输入表格的行列数')
+                        }
+                    }
+                }, {
+                    text: 'Close',
+                    handler: function () {
+                        rowNumber = 0
+                        columnNumber = 0
+                        Ext.getCmp('input-row').setValue('')
+                        Ext.getCmp('input-column').setValue('')
+                        win.hide()
+                    }
+                }]
+            });
+
+            const contextMenu = new Ext.menu.Menu({
+                items: [{
+                    text: 'edit reset',
+                    handler: function () {
+                        simple.form.reset()
+                        replyBtn.setDisabled(true)
+                    }
+                }, {
+                    text: 'insert table',
+                    handler: function () {
+                        win.show(this)
+                    }
+                }]
+            })
+
+            const contextDoc = Ext.getDoc();
+            Ext.get(contextDoc).on('contextmenu',e => {
+                e.preventDefault();
+                contextMenu.showAt(e.getXY());
+            });
+
+            var tableData = []
+
+            function generateTableTemplate(rows, columns) {
+                tableData = []
+                for (let i = 0; i < rows; i++) {
+                    tableData[i] = []
+                    for (let j = 0; j < columns; j++) {
+                        tableData[i][j] = {rowIndex: i + 1, columnIndex: j + 1}
+                    }
+                }
+            }
+
+            var tpl = ''
+
+            function renderTable() {
+                tpl = new Ext.XTemplate(
+                    '<table border="1">',
+                    '<tpl for="values">',
+                    '<tr>',
+                    '<tpl for="values">',
+                    '<td>( {rowIndex}, {columnIndex})</td>',
+                    '</tpl>',
+                    '</tr>',
+                    '</tpl>'
+                )
+                tpl.overwrite(document.getElementById('table-region'), tableData)
+            }
+
+            var toolBar = new Ext.Toolbar({
+                items: [
+                    {
+                        text: 'Edit',
+                        menu: [{
+                            text: 'Reset',
+                            handler: function () {
+                                simple.form.reset()
+                                replyBtn.setDisabled(true)
+                            }
+                        }]
+                    },
+                    '-',
+                    {
+                        text: 'Insert',
+                        menu: [{
+                            text: 'Table',
+                            handler: function () {
+                                win.show(this)
+                            }
+                        }]
+                    }
+                ]
+            })
+
+            var replyBtn = new Ext.Button({
+                text: 'Reply',
+                id: 'btn-reply',
+                type: 'submit',
+                disabled: true,
+                handler: function () {
+                    if (simple.form.isValid()) {
+                        Ext.MessageBox.show({
+                            title: 'Progress',
+                            msg: 'Waiting...',
+                            progressText: 'Replying...',
+                            width: 300,
+                            progress: true,
+                            closable: false
+                        });
+
+                        var f = function (v) {
+                            return function () {
+                                if (v === 7) {
+                                    Ext.MessageBox.hide();
+                                } else {
+                                    var i = v / 6;
+                                    Ext.MessageBox.updateProgress(i, Math.round(100 * i) + '% completed');
+                                }
+                            };
+                        };
+                        for (var i = 1; i < 7; i++) {
+                            setTimeout(f(i), i * 500);
+                        }
+                        var delay = new Ext.util.DelayedTask(function () {
+                            Ext.Msg.alert('提示', 'success!')
+                        })
+                        delay.delay(3000)
+                    }
+                }
+            })
+
+            var simple = new Ext.FormPanel({
+                renderTo: 'reply-form',
+                labelWidth: 100,
+                frame: true,
+                title: 'Blog Reply',
+                bodyStyle: 'padding:5px 5px 0',
+                width: 450,
+                defaults: {width: 280},
+                tbar: toolBar,
+                items: [{
+                    fieldLabel: 'Reply message',
+                    xtype: 'textarea',
+                    name: 'reply',
+                    allowBlank: false,
+                    enableKeyEvents: true,
+                    listeners: {
+                        'blur': function (textArea) {
+                            var message = simple.form.findField('reply').getValue()
+                            replyBtn.setDisabled(Ext.isEmpty(message))
+                        },
+                        'keypress': function (textArea, event) {
+                            var message = simple.form.findField('reply').getValue()
+                            replyBtn.setDisabled(Ext.isEmpty(message))
+                        }
+                    }
+                }],
+                buttons: [
+                    replyBtn,
+                    {
+                        text: 'Reset',
+                        type: 'reset',
+                        handler: function () {
+                            simple.form.reset();
+                            replyBtn.setDisabled(true)
+                        }
+                    }]
+            });
         })
     </script>
 </head>
 
 <body>
-
+<div id="reply-form"></div>
+<div id="table-region"></div>
 </body>
 
 </html>
